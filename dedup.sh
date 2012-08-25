@@ -1,100 +1,133 @@
 #!/bin/bash
 
 ################################################################################
-# Argument flags for future use
+# Configurations
 ################################################################################
-sFLAG="-s"
-bFLAG="-b"
-nFLAG="-n"
-
-SPLIT_SIZE="1K"
-#SPLIT_EXE="split -n 10 -d -a 32 "
-SPLIT_EXE="/usr/bin/split -b ${SPLIT_SIZE} -d -a 32 "
-SIGNATURE_EXE="/usr/bin/sha512sum "
-
 ################################################################################
-# List of directories that contain files
+# Array of directories that contain files that need to be deduplicated
 ################################################################################
-FILES=( "files" "1024x1024" )
+FILES=( "../files" )
 #FILES=( "1024x1024" )
+
+################################################################################
+# Destination workspace
+################################################################################
+WORKSPACE_DIR="/tmp/workspace"
+
+################################################################################
+# Split size in bytes
+################################################################################
+SPLIT_SIZE="512"
+
+################################################################################
+# Arguments for Dependecies
+################################################################################
+SPLIT_ARGUMENTS=" -b ${SPLIT_SIZE} -d -a 8 "
+#SPLIT_ARGUMENTS=" -n 10 -d -a 32 "
+
+################################################################################
+# Dependecies
+################################################################################
+BASENAME_EXE="/usr/bin/basename "
+#CD_EXE="/usr/bin/cd "
+DU_EXE="/usr/bin/du "
+ECHO_EXE="/bin/echo "
+FIND_EXE="/usr/bin/find "
+LN_EXE="/bin/ln "
+MKDIR_EXE="/bin/mkdir "
+MV_EXE="/bin/mv "
+PWD_EXE="/bin/pwd "
+RM_EXE="/bin/rm "
+SPLIT_EXE="/usr/bin/split "
+SIGNATURE_EXE="/usr/bin/sha512sum "
 
 ################################################################################
 # Workspace directory where split and deduplicated files are deposited
 ################################################################################
-WORKSPACE_DIR="./workspace"
-
 BLOBS="blobs"
 SPLIT_DIR="${WORKSPACE_DIR}/splitfiles"
 BLOBS_DIR="${WORKSPACE_DIR}/${BLOBS}"
 
-if [ ! -d "$SPLIT_DIR" ]; then mkdir -p "$SPLIT_DIR" ; fi
-if [ ! -d "$BLOBS_DIR" ]; then mkdir -p "$BLOBS_DIR" ; fi
+################################################################################
+# Create split and blobs directories
+################################################################################
+if [ ! -d "$SPLIT_DIR" ]; then $MKDIR_EXE -p "$SPLIT_DIR" ; fi
+if [ ! -d "$BLOBS_DIR" ]; then $MKDIR_EXE -p "$BLOBS_DIR" ; fi
 
+################################################################################
+# Start of looping through files in directory
+################################################################################
 for FILES_DIR in "${FILES[@]}"
 do
 
+  if [ ! -d "$FILES_DIR" ]; then
+    $ECHO_EXE "ERROR: Directory $FILES_DIR Does not exist"
+    exit 1
+  fi
+  
   FILES_LINKS_DIR="${WORKSPACE_DIR}/${FILES_DIR}"
   
-  if [ ! -d "$FILES_LINKS_DIR" ]; then mkdir -p "$FILES_LINKS_DIR" ; fi
+  if [ ! -d "$FILES_LINKS_DIR" ]; then $MKDIR_EXE -p "$FILES_LINKS_DIR" ; fi
 
-  FILES=($(find "$FILES_DIR" -maxdepth 1 -type f -name '*'))
+  FILES=($($FIND_EXE "$FILES_DIR" -maxdepth 1 -type f -name '*'))
 
   ##############################################################################
   # Split Files
   ##############################################################################
   for f in "${FILES[@]}"
   do
-    fn="$(basename $f)"
-    echo "Splitting $fn : "
-    if [ ! -d "${SPLIT_DIR}/$fn" ];       then mkdir -p "${SPLIT_DIR}/$fn" ; fi
-    if [ ! -d "${FILES_LINKS_DIR}/$fn" ]; then mkdir -p "${FILES_LINKS_DIR}/$fn" ; fi
+    fn="$($BASENAME_EXE $f)"
+    $ECHO_EXE "Splitting $fn : "
+    if [ ! -d "${SPLIT_DIR}/$fn" ];       then $MKDIR_EXE -p "${SPLIT_DIR}/$fn" ; fi
+    if [ ! -d "${FILES_LINKS_DIR}/$fn" ]; then $MKDIR_EXE -p "${FILES_LINKS_DIR}/$fn" ; fi
    
-    $SPLIT_EXE ${f} ${SPLIT_DIR}/$fn/${fn}_split_
-    FILES_SPLIT=($(find ${SPLIT_DIR}/$fn/ -name '*_split_*'))
+    $SPLIT_EXE $SPLIT_ARGUMENTS ${f} ${SPLIT_DIR}/$fn/${fn}_split_
+    FILES_SPLIT=($($FIND_EXE ${SPLIT_DIR}/$fn/ -name '*_split_*'))
 
     ############################################################################
     # Get Hash Signature of each split file
     ############################################################################
     for (( i = 0 ; i < ${#FILES_SPLIT[@]}; i++ ))
     do
-      fns=$(basename ${FILES_SPLIT[$i]})
+      fns=$($BASENAME_EXE ${FILES_SPLIT[$i]})
       _HASH_SIG=($($SIGNATURE_EXE ${FILES_SPLIT[$i]}))
       if [ ! -e "${BLOBS_DIR}/${_HASH_SIG[0]}" ]; then
-        echo " ! FOUND:   mv" $(basename ${FILES_SPLIT[$i]})" to "$(basename ${BLOBS_DIR}/${_HASH_SIG[0]})
-        mv ${FILES_SPLIT[$i]} ${BLOBS_DIR}/${_HASH_SIG[0]}
+        $ECHO_EXE " ! FOUND:   $MV_EXE" $($BASENAME_EXE ${FILES_SPLIT[$i]})" to "$($BASENAME_EXE ${BLOBS_DIR}/${_HASH_SIG[0]})
+        $MV_EXE ${FILES_SPLIT[$i]} ${BLOBS_DIR}/${_HASH_SIG[0]}
       else
-        echo "   FOUND: ! mv" $(basename ${FILES_SPLIT[$i]})" to "$(basename ${BLOBS_DIR}/${_HASH_SIG[0]})
+        $ECHO_EXE "   FOUND: ! $MV_EXE" $($BASENAME_EXE ${FILES_SPLIT[$i]})" to "$($BASENAME_EXE ${BLOBS_DIR}/${_HASH_SIG[0]})
       fi
      
-      CWD="$(pwd)"
+      CWD="$($PWD_EXE)"
       cd "${FILES_LINKS_DIR}/$fn/"
      
       if [ ! -L "$fns" ]; then
-        echo " ! FOUND:   ln $fns to ../../${BLOBS}/${_HASH_SIG[0]}"
-        ln -s "../../${BLOBS}/${_HASH_SIG[0]}" "$fns"
+        $ECHO_EXE " ! FOUND:   ln $fns to ../../${BLOBS}/${_HASH_SIG[0]}"
+        $LN_EXE -s "../../${BLOBS}/${_HASH_SIG[0]}" "$fns"
       else
-        echo "   FOUND: ! ln $fns to ../../${BLOBS}/${_HASH_SIG[0]}"
+        $ECHO_EXE "   FOUND: ! ln $fns to ../../${BLOBS}/${_HASH_SIG[0]}"
       fi
       cd "$CWD"
-      echo ""
+      $ECHO_EXE ""
      
     done
    
-    echo "   Removing $SPLIT_DIR/$fn"
-    rm -rf "$SPLIT_DIR/$fn"
-    echo ""
+    $ECHO_EXE "   Removing $SPLIT_DIR/$fn"
+    $RM_EXE -rf "$SPLIT_DIR/$fn"
+    $ECHO_EXE ""
 
   done
 
-  echo "-----------------------------------------------------------------------"
+  $ECHO_EXE "-----------------------------------------------------------------------"
  
-  ORIGINALS=($(du -sb $FILES_DIR))
-  FINALS=($(du -sb $BLOBS_DIR))
-  echo "-----------------------------------------------------------------------"
-  echo ""
-  echo "$ORIGINALS,$FINALS,$SPLIT_SIZE"
+  ORIGINALS=($($DU_EXE -sb $FILES_DIR))
+  FINALS=($($DU_EXE -sb $BLOBS_DIR))
+  $ECHO_EXE "-----------------------------------------------------------------------"
+  $ECHO_EXE ""
+  $ECHO_EXE "$ORIGINALS,$FINALS,$SPLIT_SIZE"
    
 done
 
 
-#log() { logger -t scriptname "$@"; echo "$@"; }
+#log() { logger -t scriptname "$@"; $ECHO_EXE "$@"; }
+    
