@@ -27,7 +27,7 @@ BLOBS_DIR="${WORKSPACE_DIR}/${BLOBS}"
 if [ ! -d "$SPLIT_DIR" ]; then mkdir -p "$SPLIT_DIR" ; fi
 if [ ! -d "$BLOBS_DIR" ]; then mkdir -p "$BLOBS_DIR" ; fi
 
-time for FILES_DIR in "${FILES[@]}"
+for FILES_DIR in "${FILES[@]}"
 do
 
   FILES_LINKS_DIR="${WORKSPACE_DIR}/${FILES_DIR}"
