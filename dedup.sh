@@ -5,18 +5,21 @@ bFLAG="-b"
 nFLAG="-n"
 
 SPLIT_SIZE="1K"
-SPLIT_EXE="/usr/bin/split -b ${SPLIT_SIZE} -d -a 32 "
 #SPLIT_EXE="split -n 10 -d -a 32 "
-
-FILES=( "files" "1024x1024" )
-FILES=( "1024x1024" )
-#FILES=( "1x1024" )
-#FILES=( "10x1024" )
-#FILES=( "x" )
-
+SPLIT_EXE="/usr/bin/split -b ${SPLIT_SIZE} -d -a 32 "
 SIGNATURE_EXE="/usr/bin/sha512sum "
 
+################################################################################
+# List of directories that contain files
+################################################################################
+FILES=( "files" "1024x1024" )
+#FILES=( "1024x1024" )
+
+################################################################################
+# Workspace directory where split and deduplicated files are deposited
+################################################################################
 WORKSPACE_DIR="./workspace"
+
 BLOBS="blobs"
 SPLIT_DIR="${WORKSPACE_DIR}/splitfiles"
 BLOBS_DIR="${WORKSPACE_DIR}/${BLOBS}"
@@ -33,22 +36,22 @@ do
 
   FILES=($(find "$FILES_DIR" -maxdepth 1 -type f -name '*'))
 
-  ################################################################################
+  ##############################################################################
   # Split Files
-  ################################################################################
-  time for f in "${FILES[@]}"
+  ##############################################################################
+  for f in "${FILES[@]}"
   do
     fn="$(basename $f)"
-    #echo "Splitting $fn : "
+    echo "Splitting $fn : "
     if [ ! -d "${SPLIT_DIR}/$fn" ];       then mkdir -p "${SPLIT_DIR}/$fn" ; fi
     if [ ! -d "${FILES_LINKS_DIR}/$fn" ]; then mkdir -p "${FILES_LINKS_DIR}/$fn" ; fi
     $SPLIT_EXE ${f} ${SPLIT_DIR}/$fn/${fn}_split_
   done
 
-  ################################################################################
+  ##############################################################################
   # Get Hash Signature of each split file
-  ################################################################################
-  time for f in "${FILES[@]}"
+  ##############################################################################
+  for f in "${FILES[@]}"
   do
     fn="$(basename $f)"
     FILES_SPLIT=($(ls -f ${SPLIT_DIR}/$fn/*_split_*))
