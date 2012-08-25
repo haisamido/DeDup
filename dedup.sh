@@ -45,53 +45,52 @@ do
     echo "Splitting $fn : "
     if [ ! -d "${SPLIT_DIR}/$fn" ];       then mkdir -p "${SPLIT_DIR}/$fn" ; fi
     if [ ! -d "${FILES_LINKS_DIR}/$fn" ]; then mkdir -p "${FILES_LINKS_DIR}/$fn" ; fi
+   
     $SPLIT_EXE ${f} ${SPLIT_DIR}/$fn/${fn}_split_
-  done
+    FILES_SPLIT=($(find ${SPLIT_DIR}/$fn/ -name '*_split_*'))
 
-  ##############################################################################
-  # Get Hash Signature of each split file
-  ##############################################################################
-  for f in "${FILES[@]}"
-  do
-    fn="$(basename $f)"
-    FILES_SPLIT=($(ls -f ${SPLIT_DIR}/$fn/*_split_*))
+    ############################################################################
+    # Get Hash Signature of each split file
+    ############################################################################
     for (( i = 0 ; i < ${#FILES_SPLIT[@]}; i++ ))
     do
       fns=$(basename ${FILES_SPLIT[$i]})
       _HASH_SIG=($($SIGNATURE_EXE ${FILES_SPLIT[$i]}))
       if [ ! -e "${BLOBS_DIR}/${_HASH_SIG[0]}" ]; then
-     #   echo " Not FOUND: Moving ${FILES_SPLIT[$i]} to ${BLOBS_DIR}/${_HASH_SIG[0]}"
+        echo " ! FOUND:   mv" $(basename ${FILES_SPLIT[$i]})" to "$(basename ${BLOBS_DIR}/${_HASH_SIG[0]})
         mv ${FILES_SPLIT[$i]} ${BLOBS_DIR}/${_HASH_SIG[0]}
-      #else
-     #   echo " FOUND:     Not Moving ${FILES_SPLIT[$i]} to ${BLOBS_DIR}/${_HASH_SIG[0]}" 
+      else
+        echo "   FOUND: ! mv" $(basename ${FILES_SPLIT[$i]})" to "$(basename ${BLOBS_DIR}/${_HASH_SIG[0]})
       fi
-      
+     
       CWD="$(pwd)"
       cd "${FILES_LINKS_DIR}/$fn/"
-      
+     
       if [ ! -L "$fns" ]; then
-        #echo " Not FOUND: Symlinking $fns to ../../${BLOBS}/${_HASH_SIG[0]}"
+        echo " ! FOUND:   ln $fns to ../../${BLOBS}/${_HASH_SIG[0]}"
         ln -s "../../${BLOBS}/${_HASH_SIG[0]}" "$fns"
-      #else
-       # echo " FOUND:     Not Symlinking $fns to ../../${BLOBS}/${_HASH_SIG[0]}"
+      else
+        echo "   FOUND: ! ln $fns to ../../${BLOBS}/${_HASH_SIG[0]}"
       fi
       cd "$CWD"
-      
+      echo ""
+     
     done
+   
+    echo "   Removing $SPLIT_DIR/$fn"
+    rm -rf "$SPLIT_DIR/$fn"
+    echo ""
+
   done
 
-  echo ""
-  #echo "Removing $SPLIT_DIR"
-  rm -rf $SPLIT_DIR
   echo "-----------------------------------------------------------------------"
-  
+ 
   ORIGINALS=($(du -sb $FILES_DIR))
   FINALS=($(du -sb $BLOBS_DIR))
   echo "-----------------------------------------------------------------------"
   echo ""
   echo "$ORIGINALS,$FINALS,$SPLIT_SIZE"
-#  echo $FINALS $SPLIT_SIZE
-  
+   
 done
 
 
