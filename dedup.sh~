@@ -4,7 +4,7 @@ sFLAG="-s"
 bFLAG="-b"
 nFLAG="-n"
 
-SPLIT_SIZE="1K"
+SPLIT_SIZE="1"
 SPLIT_EXE="/usr/bin/split -b ${SPLIT_SIZE} -d -a 32 "
 #SPLIT_EXE="split -n 10 -d -a 32 "
 
